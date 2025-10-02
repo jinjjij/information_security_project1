@@ -100,7 +100,7 @@ def adjustRow(out_pixels):
     img.save("newImage.png")
 
 
-def findmean():
+def findmean(step):
     bits = [None] * 4  # 4개 결과 버퍼
 
     for i in range(4):
@@ -126,7 +126,7 @@ def findmean():
 def main():
     step = 16
     blocklist = GenerateBlocks(0, step)
-    pixels = generateImage(step, blocklist, 550, "topK")
+    pixels = generateImage(step, blocklist, 500, "topK")
     
     out_img = Image.frombytes("RGBA", (w, h), bytes(pixels))
     out_img.save("processed.png")
