@@ -23,11 +23,8 @@ def make_color_from_block(b):
 
 color_map = defaultdict(lambda: None)
 
-# 사용
-blk = b'\x01\x02...'  # bytes 키 가능
-if color_map[blk] is None:
-    color_map[blk] = make_color_from_block(blk)
-# 또는 편하게:
+# 색 맵 초기화
+blk = b'\x01\x02...'
 color = color_map.setdefault(blk, make_color_from_block(blk))
 
 
@@ -51,20 +48,22 @@ def GenerateBlocks(offset, step):
     return sorted_items
 
 
-def generateImage(step, sorted_blocks, K, mod):
+def generatePixels(step, sorted_blocks, K, mod):
     out_pixels = bytearray(b'\x00\x00\x00\xff' * (w * h))
 
     # 상위 topK 개의 블록만을 사용
     if mod == "topK":
         for k in range(K):
             block = sorted_blocks[k]
-            # 같은 블록들의 리스트 순회
+
             for pos in block[1]:
-                # 블록의 4개의 픽셀 순회
                 for i in range(0, step, 4):
+
                     if color_map[block[0]] is None:
                         color_map[block[0]] = make_color_from_block(block[0])
-                    out_pixels[pos+i : pos+i+4] = color_map[block[0]]       
+                    out_pixels[pos+i : pos+i+4] = color_map[block[0]]    
+        
+
     elif mod == "threshold":
         plotted_block = 0
         for block in sorted_blocks:
@@ -78,12 +77,11 @@ def generateImage(step, sorted_blocks, K, mod):
                     out_pixels[pos+i : pos+i+4] = color_map[block[0]]
         print(plotted_block)
 
-    #out_img = Image.frombytes("RGBA", (w, h), bytes(out_pixels))
-    ##out_img.save("processed.png")
     return out_pixels
 
 
-
+# 2픽셀씩 밀려서 오른쪽 두 픽셀 무시.
+# 짝수번째 줄만 사용해서 만드는 이미지.
 def adjustRow(out_pixels):
     src = memoryview(out_pixels)         # bytes/bytearray 모두 OK
     dst = bytearray(w * h * 4)
@@ -96,37 +94,13 @@ def adjustRow(out_pixels):
             di = (r * w + c) * 4         # dest index (RGBA)
             dst[di:di+4] = src[si:si+4]
 
-    img = Image.frombytes("RGBA", (w, h), bytes(dst))
-    img.save("newImage.png")
-
-
-def findmean(step):
-    bits = [None] * 4  # 4개 결과 버퍼
-
-    for i in range(4):
-        blocklist = GenerateBlocks(i * 4, step)
-        # generateImage는 RGBA bytes-like (길이 w*h*4) 반환한다고 가정
-        bits[i] = generateImage(step, blocklist, 600, "topK")
-
-    
-    mean_pixels = bytearray(w * h * 4)
-
-    # 속도 위해 memoryview 사용
-    mv = [memoryview(b) for b in bits]
-
-    # 픽셀 단위(4바이트씩)로 평균
-    for i in range(0, w * h * 4, 4):
-        mean_pixels[i + 0] = (mv[0][i + 0] + mv[1][i + 0] + mv[2][i + 0] + mv[3][i + 0]) // 4  # R
-        mean_pixels[i + 1] = (mv[0][i + 1] + mv[1][i + 1] + mv[2][i + 1] + mv[3][i + 1]) // 4  # G
-        mean_pixels[i + 2] = (mv[0][i + 2] + mv[1][i + 2] + mv[2][i + 2] + mv[3][i + 2]) // 4  # B
-        mean_pixels[i + 3] = (mv[0][i + 3] + mv[1][i + 3] + mv[2][i + 3] + mv[3][i + 3]) // 4  # A
-    return mean_pixels
+    return dst
 
 
 def main():
     step = 16
     blocklist = GenerateBlocks(0, step)
-    pixels = generateImage(step, blocklist, 500, "topK")
+    pixels = generatePixels(step, blocklist, 450, "topK")
     
     out_img = Image.frombytes("RGBA", (w, h), bytes(pixels))
     out_img.save("processed.png")
